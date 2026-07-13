@@ -3,12 +3,14 @@ import { TeamCard } from "../components/TeamCard";
 import { DetailedCharts } from "../components/DetailedCharts";
 import { Leaderboard } from "../components/Leaderboard";
 import { EmptyState } from "../components/ui/EmptyState";
+import { useGameClock } from "../hooks/useGameClock";
 import { useTeams } from "../hooks/useTeams";
 import { useTransactions } from "../hooks/useTransactions";
 
 export function DashboardPage() {
   const { rankedTeams, loading, error, isDemoMode } = useTeams();
   const { transactionsByTeam } = useTransactions();
+  const clock = useGameClock(!isDemoMode);
 
   return (
     <main className="min-h-screen px-4 py-5 text-white md:px-7 md:py-6">
@@ -21,9 +23,21 @@ export function DashboardPage() {
             Live Scoreboard
           </h1>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-teal-300/25 bg-teal-300/10 px-3 py-2 text-sm font-semibold text-teal-100">
+        <div
+          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${
+            clock.paused
+              ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
+              : "border-teal-300/25 bg-teal-300/10 text-teal-100"
+          }`}
+        >
           <SignalIcon className="h-5 w-5" />
-          <span>{isDemoMode ? "Demo met seedteams" : "Realtime actief"}</span>
+          <span>
+            {isDemoMode
+              ? "Demo met seedteams"
+              : clock.paused
+                ? "Klok gepauzeerd"
+                : "Realtime actief"}
+          </span>
         </div>
       </header>
 

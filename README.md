@@ -9,6 +9,7 @@ Een productieklare React + Vite applicatie voor een live Chiro-activiteit met vi
 - Admin dashboard met Supabase Auth.
 - Geld toevoegen, geld aftrekken, inkomen verhogen, inkomen vrij instellen, naam/kleur wijzigen en resets.
 - Game Master-pagina met vaste upgrades zoals Extra kassier, Zelfscan en Magazijnuitbreiding.
+- Gameklok pauzeren en hervatten zodat automatisch inkomen tijdelijk stopt.
 - Adminlogs voor elke beheeractie met oude en nieuwe waarde.
 - Transactions-tabel voor geldgeschiedenis en mini-grafieken.
 - Supabase Realtime voor automatische schermupdates.
@@ -24,6 +25,8 @@ inkomen = aantal_30s_ticks * (income_per_minute / 2)
 ```
 
 Daardoor is de berekening idempotent. Als de Edge Function, browser of cron later binnenkomt, worden gemiste ticks ingehaald zonder dubbel geld toe te kennen.
+
+Wanneer de gameklok gepauzeerd is via de adminpagina, werkt `apply_income_for_team` de `last_income_update` bij zonder extra geld te boeken. Bij hervatten begint de teller opnieuw vanaf dat moment.
 
 ## Projectstructuur
 
@@ -63,8 +66,9 @@ VITE_DEFAULT_ADMIN_EMAIL=admin@example.com
 3. Voer `supabase/sql/001_schema.sql` uit.
 4. Voer `supabase/sql/002_seed.sql` uit.
 5. Voer `supabase/sql/004_production_hardening.sql` uit.
-6. Ga naar Authentication en maak een gebruiker aan met hetzelfde e-mailadres als in `settings.admin_emails`.
-7. Pas indien nodig de adminlijst aan:
+6. Voer `supabase/sql/005_clock_pause.sql` uit.
+7. Ga naar Authentication en maak een gebruiker aan met hetzelfde e-mailadres als in `settings.admin_emails`.
+8. Pas indien nodig de adminlijst aan:
 
 ```sql
 update public.settings

@@ -17,3 +17,7 @@ on conflict (id) do nothing;
 insert into public.settings (key, value)
 values ('admin_emails', '["admin@example.com"]'::jsonb)
 on conflict (key) do nothing;
+
+insert into public.settings (key, value)
+values ('clock_paused', 'false'::jsonb)
+on conflict (key) do nothing;

@@ -90,6 +90,14 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: Team[];
       };
+      get_clock_paused: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      set_clock_paused: {
+        Args: { p_paused: boolean };
+        Returns: boolean;
+      };
       purchase_game_upgrade: {
         Args: { p_team_id: number; p_upgrade_key: string };
         Returns: Team;

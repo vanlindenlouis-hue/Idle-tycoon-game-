@@ -176,6 +176,18 @@ export async function resetActivity(): Promise<Team[]> {
   return (data ?? []).map(normalizeTeam);
 }
 
+export async function fetchClockPaused(): Promise<boolean> {
+  return Boolean(await callRpc<boolean>("get_clock_paused"));
+}
+
+export async function updateClockPaused(paused: boolean): Promise<boolean> {
+  return Boolean(
+    await callRpc<boolean>("set_clock_paused", {
+      p_paused: paused,
+    }),
+  );
+}
+
 export async function purchaseGameUpgrade(
   teamId: number,
   upgradeKey: string,

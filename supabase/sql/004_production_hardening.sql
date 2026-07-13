@@ -21,6 +21,10 @@ insert into public.settings (key, value)
 values ('admin_emails', '["admin@example.com"]'::jsonb)
 on conflict (key) do nothing;
 
+insert into public.settings (key, value)
+values ('clock_paused', 'false'::jsonb)
+on conflict (key) do nothing;
+
 revoke execute on function public.log_admin_action(
   smallint,
   text,
@@ -31,6 +35,8 @@ revoke execute on function public.log_admin_action(
 
 revoke execute on function public.require_admin() from public, anon;
 
+grant execute on function public.get_clock_paused() to anon, authenticated;
+grant execute on function public.set_clock_paused(boolean) to authenticated;
 grant execute on function public.apply_income_for_team(smallint) to anon, authenticated;
 grant execute on function public.apply_income_for_all() to anon, authenticated;
 grant execute on function public.add_team_money(smallint, numeric, text) to authenticated;

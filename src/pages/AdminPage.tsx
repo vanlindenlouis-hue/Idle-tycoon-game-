@@ -4,6 +4,8 @@ import {
   ChartBarIcon,
   CircleStackIcon,
   ListBulletIcon,
+  PauseCircleIcon,
+  PlayCircleIcon,
   PowerIcon,
   SignalIcon,
   Squares2X2Icon,
@@ -19,6 +21,7 @@ import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useAdminLogs } from "../hooks/useAdminLogs";
 import { useAuth } from "../hooks/useAuth";
+import { useGameClock } from "../hooks/useGameClock";
 import { useTeams } from "../hooks/useTeams";
 import { isSupabaseConfigured } from "../supabase/client";
 import { resetActivity } from "../services/teamService";
@@ -51,6 +54,7 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
     error: logsError,
     reload: reloadLogs,
   } = useAdminLogs(auth.isAuthenticated);
+  const clock = useGameClock(auth.isAuthenticated);
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -65,6 +69,7 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
   async function refreshAdminData() {
     await reload();
     await reloadLogs();
+    await clock.reload();
   }
 
   if (!isSupabaseConfigured || isDemoMode) {
@@ -110,6 +115,22 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
     }
   }
 
+  async function handleToggleClock() {
+    setBusy(true);
+    setError(null);
+
+    try {
+      await clock.setPaused(!clock.paused);
+      await refreshAdminData();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Klok aanpassen is mislukt.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-5 text-white md:px-7">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
@@ -135,6 +156,15 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
             disabled={teamsLoading}
           >
             Sync inkomen
+          </Button>
+          <Button
+            type="button"
+            variant={clock.paused ? "primary" : "secondary"}
+            icon={clock.paused ? <PlayCircleIcon /> : <PauseCircleIcon />}
+            onClick={() => void handleToggleClock()}
+            disabled={busy || clock.loading}
+          >
+            {clock.paused ? "Klok starten" : "Stop klok"}
           </Button>
           <Button
             type="button"
@@ -180,7 +210,7 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
         ))}
       </nav>
 
-      <section className="mb-5 grid gap-3 md:grid-cols-3">
+      <section className="mb-5 grid gap-3 md:grid-cols-4">
         <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-400">
             <CircleStackIcon className="h-5 w-5 text-teal-200" />
@@ -213,7 +243,31 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
             Berekend via last_income_update
           </p>
         </div>
+        <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+          <p className="mb-2 text-sm font-semibold text-slate-400">
+            Gameklok
+          </p>
+          <p
+            className={`text-2xl font-black ${
+              clock.paused ? "text-amber-100" : "text-emerald-100"
+            }`}
+          >
+            {clock.paused ? "Gepauzeerd" : "Actief"}
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            {clock.paused ? "Geen automatisch inkomen" : "Inkomen loopt"}
+          </p>
+        </div>
       </section>
+
+      {clock.error ? (
+        <div className="mb-5">
+          <EmptyState
+            title="Klokknop is nog niet klaar in Supabase"
+            body={`${clock.error} Voer supabase/sql/005_clock_pause.sql uit in Supabase SQL Editor.`}
+          />
+        </div>
+      ) : null}
 
       {teamsError ? (
         <div className="mb-5">
