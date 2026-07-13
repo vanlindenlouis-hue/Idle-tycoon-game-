@@ -1,5 +1,6 @@
 import { Cog6ToothIcon, SignalIcon } from "@heroicons/react/24/outline";
 import { TeamCard } from "../components/TeamCard";
+import { DetailedCharts } from "../components/DetailedCharts";
 import { Leaderboard } from "../components/Leaderboard";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useTeams } from "../hooks/useTeams";
@@ -69,6 +70,11 @@ export function DashboardPage() {
           <div className="h-full w-1/2 animate-shine bg-teal-300" />
         </div>
       ) : null}
+
+      <DetailedCharts
+        teams={rankedTeams}
+        transactionsByTeam={transactionsByTeam}
+      />
     </main>
   );
 }

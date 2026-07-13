@@ -1,4 +1,4 @@
-import { BoltIcon } from "@heroicons/react/24/outline";
+import { BoltIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import type { GameUpgrade, Team } from "../types/game";
 import { applyFilledUpgrade } from "../services/teamService";
@@ -15,9 +15,13 @@ function numericInput(value: string): number {
   return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
 }
 
+function makeUpgradeKey() {
+  return `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function normalizeUpgrade(value: Partial<GameUpgrade>, fallback: GameUpgrade) {
   return {
-    key: fallback.key,
+    key: String(value.key ?? fallback.key),
     name: String(value.name ?? fallback.name).slice(0, 48),
     cost: numericInput(String(value.cost ?? fallback.cost)),
     incomeBoost: numericInput(String(value.incomeBoost ?? fallback.incomeBoost)),
@@ -33,10 +37,27 @@ function loadPresetUpgrades() {
     const parsed = JSON.parse(stored) as Array<Partial<GameUpgrade>>;
     if (!Array.isArray(parsed)) return gameUpgrades;
 
-    return gameUpgrades.map((fallback) => {
+    const defaultUpgrades = gameUpgrades.map((fallback) => {
       const saved = parsed.find((upgrade) => upgrade.key === fallback.key);
       return normalizeUpgrade(saved ?? {}, fallback);
     });
+    const customUpgrades = parsed
+      .filter(
+        (upgrade) =>
+          typeof upgrade.key === "string" &&
+          !gameUpgrades.some((fallback) => fallback.key === upgrade.key),
+      )
+      .map((upgrade) =>
+        normalizeUpgrade(upgrade, {
+          key: String(upgrade.key),
+          name: "Nieuwe upgrade",
+          cost: 1000,
+          incomeBoost: 100,
+          description: "Eigen upgrade",
+        }),
+      );
+
+    return [...defaultUpgrades, ...customUpgrades];
   } catch {
     return gameUpgrades;
   }
@@ -87,6 +108,25 @@ export function GameMasterPanel({
             }
           : upgrade,
       ),
+    );
+  }
+
+  function addPreset() {
+    setPresetUpgrades((current) => [
+      ...current,
+      {
+        key: makeUpgradeKey(),
+        name: `Nieuwe upgrade ${current.length + 1}`,
+        cost: 1000,
+        incomeBoost: 100,
+        description: "Eigen upgrade voor het spel.",
+      },
+    ]);
+  }
+
+  function removePreset(key: string) {
+    setPresetUpgrades((current) =>
+      current.filter((upgrade) => upgrade.key !== key),
     );
   }
 
@@ -143,6 +183,15 @@ export function GameMasterPanel({
           >
             Herstel presets
           </Button>
+          <Button
+            type="button"
+            variant="primary"
+            icon={<PlusIcon />}
+            onClick={addPreset}
+            disabled={Boolean(busy)}
+          >
+            Upgrade toevoegen
+          </Button>
         </div>
       </div>
 
@@ -154,6 +203,9 @@ export function GameMasterPanel({
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {presetUpgrades.map((upgrade) => {
+          const isCustomUpgrade = !gameUpgrades.some(
+            (fallback) => fallback.key === upgrade.key,
+          );
           const hasName = upgrade.name.trim().length > 0;
           const hasBoost = upgrade.incomeBoost > 0;
           const canAfford = selectedTeam
@@ -168,9 +220,22 @@ export function GameMasterPanel({
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <BoltIcon className="h-6 w-6 text-yellow-200" />
-                <span className="number-tabular rounded-lg bg-white/10 px-2 py-1 text-xs font-bold text-slate-200">
-                  +{formatMoney(upgrade.incomeBoost)}/min
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="number-tabular rounded-lg bg-white/10 px-2 py-1 text-xs font-bold text-slate-200">
+                    +{formatMoney(upgrade.incomeBoost)}/min
+                  </span>
+                  {isCustomUpgrade ? (
+                    <button
+                      type="button"
+                      aria-label="Upgrade verwijderen"
+                      onClick={() => removePreset(upgrade.key)}
+                      disabled={Boolean(busy)}
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-slate-400 transition hover:bg-rose-500/15 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className="grid gap-3">
                 <TextInput
@@ -224,9 +289,11 @@ export function GameMasterPanel({
               >
                 {busy === upgrade.key
                   ? "Kopen..."
-                  : canAfford
-                    ? "Koop upgrade"
-                    : "Te duur"}
+                  : !hasName || !hasBoost
+                    ? "Vul upgrade in"
+                    : canAfford
+                      ? "Koop upgrade"
+                      : "Te duur"}
               </Button>
             </article>
           );
