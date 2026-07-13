@@ -62,8 +62,9 @@ VITE_DEFAULT_ADMIN_EMAIL=admin@example.com
 2. Open SQL Editor.
 3. Voer `supabase/sql/001_schema.sql` uit.
 4. Voer `supabase/sql/002_seed.sql` uit.
-5. Ga naar Authentication en maak een gebruiker aan met hetzelfde e-mailadres als in `settings.admin_emails`.
-6. Pas indien nodig de adminlijst aan:
+5. Voer `supabase/sql/004_production_hardening.sql` uit.
+6. Ga naar Authentication en maak een gebruiker aan met hetzelfde e-mailadres als in `settings.admin_emails`.
+7. Pas indien nodig de adminlijst aan:
 
 ```sql
 update public.settings

@@ -6,7 +6,7 @@ import {
   PlusCircleIcon,
   SpeakerWaveIcon,
 } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Team } from "../types/game";
 import { formatMoney } from "../utils/format";
 import { playKaching } from "../utils/sound";
@@ -36,7 +36,7 @@ export function AdminTeamPanel({
   onChanged,
 }: {
   team: Team;
-  onChanged: () => void;
+  onChanged: () => void | Promise<void>;
 }) {
   const [name, setName] = useState(team.name);
   const [color, setColor] = useState(team.color);
@@ -46,15 +46,24 @@ export function AdminTeamPanel({
   const [incomeValue, setIncomeValue] = useState(String(team.income_per_minute));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+
+  useEffect(() => {
+    setName(team.name);
+    setColor(team.color);
+    setIncomeValue(String(team.income_per_minute));
+  }, [team.color, team.income_per_minute, team.name]);
 
   async function run(label: string, action: () => Promise<unknown>) {
     setBusy(label);
     setError(null);
+    setSuccess(null);
 
     try {
       await action();
-      onChanged();
+      await onChanged();
+      setSuccess("Actie opgeslagen.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Actie is mislukt.");
     } finally {
@@ -92,6 +101,11 @@ export function AdminTeamPanel({
       {error ? (
         <p className="mb-4 rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">
           {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="mb-4 rounded-lg border border-emerald-300/30 bg-emerald-300/10 p-3 text-sm text-emerald-100">
+          {success}
         </p>
       ) : null}
 
@@ -268,6 +282,7 @@ export function AdminTeamPanel({
                 value={incomeValue}
                 onChange={(event) => setIncomeValue(event.target.value)}
                 inputMode="numeric"
+                placeholder="Bijvoorbeeld 4125"
                 className="min-h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-950/60 px-3 text-sm text-white"
               />
               <Button

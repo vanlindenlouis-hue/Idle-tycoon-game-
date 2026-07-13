@@ -3,30 +3,39 @@ import { isSupabaseConfigured, supabase } from "../supabase/client";
 import { fetchAdminLogs } from "../services/teamService";
 import type { AdminLog } from "../types/game";
 
-export function useAdminLogs() {
+export function useAdminLogs(enabled = true) {
   const [logs, setLogs] = useState<AdminLog[]>([]);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [loading, setLoading] = useState(isSupabaseConfigured && enabled);
+  const [error, setError] = useState<string | null>(null);
 
   const loadLogs = useCallback(async () => {
-    if (!isSupabaseConfigured) {
+    if (!enabled || !isSupabaseConfigured) {
       setLogs([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
     try {
+      setLoading(true);
+      setError(null);
       setLogs(await fetchAdminLogs());
-    } catch {
+    } catch (err) {
       setLogs([]);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Adminlogs laden is mislukt.",
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     void loadLogs();
 
-    if (!isSupabaseConfigured || !supabase) return;
+    if (!enabled || !isSupabaseConfigured || !supabase) return;
 
     const client = supabase;
 
@@ -42,7 +51,7 @@ export function useAdminLogs() {
     return () => {
       void client.removeChannel(channel);
     };
-  }, [loadLogs]);
+  }, [enabled, loadLogs]);
 
-  return { logs, loading, reload: loadLogs };
+  return { logs, loading, error, reload: loadLogs };
 }

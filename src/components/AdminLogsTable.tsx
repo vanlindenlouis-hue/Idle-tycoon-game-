@@ -13,9 +13,11 @@ function summarize(value: Record<string, unknown> | null): string {
 export function AdminLogsTable({
   logs,
   loading,
+  error,
 }: {
   logs: AdminLog[];
   loading: boolean;
+  error?: string | null;
 }) {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
@@ -60,6 +62,12 @@ export function AdminLogsTable({
           </tbody>
         </table>
       </div>
+
+      {error ? (
+        <p className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+          {error}
+        </p>
+      ) : null}
 
       {!loading && logs.length === 0 ? (
         <p className="rounded-lg border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">

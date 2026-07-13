@@ -1,5 +1,5 @@
 import { BoltIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Team } from "../types/game";
 import { gameUpgrades } from "../utils/gameData";
 import { formatMoney } from "../utils/format";
@@ -12,7 +12,7 @@ export function GameMasterPanel({
   onChanged,
 }: {
   teams: Team[];
-  onChanged: () => void;
+  onChanged: () => void | Promise<void>;
 }) {
   const [selectedTeamId, setSelectedTeamId] = useState(teams[0]?.id ?? 1);
   const [busy, setBusy] = useState<string | null>(null);
@@ -20,6 +20,12 @@ export function GameMasterPanel({
 
   const selectedTeam =
     teams.find((team) => team.id === selectedTeamId) ?? teams[0];
+
+  useEffect(() => {
+    if (teams.length > 0 && !teams.some((team) => team.id === selectedTeamId)) {
+      setSelectedTeamId(teams[0].id);
+    }
+  }, [selectedTeamId, teams]);
 
   async function buy(upgradeKey: string) {
     if (!selectedTeam) return;
@@ -29,7 +35,8 @@ export function GameMasterPanel({
     try {
       await purchaseGameUpgrade(selectedTeam.id, upgradeKey);
       playKaching();
-      onChanged();
+      await onChanged();
+      setMessage("Upgrade gekocht en realtime verwerkt.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Aankoop is mislukt.");
     } finally {

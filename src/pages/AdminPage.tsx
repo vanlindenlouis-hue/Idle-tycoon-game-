@@ -2,8 +2,10 @@ import {
   ArrowLeftIcon,
   ArrowPathIcon,
   ChartBarIcon,
+  CircleStackIcon,
   ListBulletIcon,
   PowerIcon,
+  SignalIcon,
   Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import type { ReactNode } from "react";
@@ -20,6 +22,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useTeams } from "../hooks/useTeams";
 import { isSupabaseConfigured } from "../supabase/client";
 import { resetActivity } from "../services/teamService";
+import { formatMoney } from "../utils/format";
 
 type AdminTab = "teams" | "game-master" | "logs";
 
@@ -35,12 +38,34 @@ const tabs: Array<{
 
 export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
   const auth = useAuth();
-  const { teams, reload, isDemoMode } = useTeams();
-  const { logs, loading: logsLoading } = useAdminLogs();
+  const {
+    teams,
+    reload,
+    loading: teamsLoading,
+    error: teamsError,
+    isDemoMode,
+  } = useTeams();
+  const {
+    logs,
+    loading: logsLoading,
+    error: logsError,
+    reload: reloadLogs,
+  } = useAdminLogs(auth.isAuthenticated);
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const totalMoney = teams.reduce((sum, team) => sum + team.total_money, 0);
+  const totalIncome = teams.reduce(
+    (sum, team) => sum + team.income_per_minute,
+    0,
+  );
+
+  async function refreshAdminData() {
+    await reload();
+    await reloadLogs();
+  }
 
   if (!isSupabaseConfigured || isDemoMode) {
     return (
@@ -76,7 +101,7 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
 
     try {
       await resetActivity();
-      await reload();
+      await refreshAdminData();
       setConfirmResetAll(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reset is mislukt.");
@@ -102,6 +127,15 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
             <ArrowLeftIcon className="h-5 w-5" />
             Scoreboard
           </a>
+          <Button
+            type="button"
+            variant="secondary"
+            icon={<SignalIcon />}
+            onClick={() => void refreshAdminData()}
+            disabled={teamsLoading}
+          >
+            Sync inkomen
+          </Button>
           <Button
             type="button"
             variant="danger"
@@ -145,20 +179,68 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
         ))}
       </nav>
 
+      <section className="mb-5 grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-400">
+            <CircleStackIcon className="h-5 w-5 text-teal-200" />
+            <span>Database</span>
+          </div>
+          <p className="text-2xl font-black text-white">
+            {teams.length}/4 teams
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            {teamsError ? "Controle nodig" : "Verbonden met Supabase"}
+          </p>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+          <p className="mb-2 text-sm font-semibold text-slate-400">
+            Totaal geld
+          </p>
+          <p className="number-tabular text-2xl font-black text-white">
+            {formatMoney(totalMoney)}
+          </p>
+          <p className="mt-1 text-sm text-slate-400">Over alle teams</p>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+          <p className="mb-2 text-sm font-semibold text-slate-400">
+            Totaal inkomen
+          </p>
+          <p className="number-tabular text-2xl font-black text-white">
+            {formatMoney(totalIncome)}/min
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            Berekend via last_income_update
+          </p>
+        </div>
+      </section>
+
+      {teamsError ? (
+        <div className="mb-5">
+          <EmptyState
+            title="Supabase database is niet volledig klaar"
+            body={`${teamsError} Controleer of 001_schema.sql en 002_seed.sql in Supabase SQL Editor uitgevoerd zijn en of realtime op teams, transactions en admin_logs staat.`}
+          />
+        </div>
+      ) : null}
+
       {tab === "teams" ? (
         <section className="grid gap-4 xl:grid-cols-2">
           {teams.map((team) => (
-            <AdminTeamPanel key={team.id} team={team} onChanged={reload} />
+            <AdminTeamPanel
+              key={team.id}
+              team={team}
+              onChanged={refreshAdminData}
+            />
           ))}
         </section>
       ) : null}
 
       {tab === "game-master" ? (
-        <GameMasterPanel teams={teams} onChanged={reload} />
+        <GameMasterPanel teams={teams} onChanged={refreshAdminData} />
       ) : null}
 
       {tab === "logs" ? (
-        <AdminLogsTable logs={logs} loading={logsLoading} />
+        <AdminLogsTable logs={logs} loading={logsLoading} error={logsError} />
       ) : null}
 
       {confirmResetAll ? (
