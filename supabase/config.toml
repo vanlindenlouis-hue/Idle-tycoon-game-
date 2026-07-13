@@ -1,0 +1,4 @@
+project_id = "supermarket-tycoon-dashboard"
+
+[functions.income-tick]
+verify_jwt = false
