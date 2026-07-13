@@ -141,8 +141,9 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
             variant="danger"
             icon={<ArrowPathIcon />}
             onClick={() => setConfirmResetAll(true)}
+            disabled={busy}
           >
-            Reset activiteit
+            Reset alles
           </Button>
           <Button
             type="button"
@@ -246,7 +247,7 @@ export function AdminPage({ initialTab = "teams" }: { initialTab?: AdminTab }) {
       {confirmResetAll ? (
         <ConfirmModal
           title="Volledige activiteit resetten?"
-          body="Alle teams gaan terug naar €0, 0 upgrades en €100 per minuut. Deze actie wordt gelogd."
+          body="Alle teams gaan terug naar EUR 0, 0 upgrades en EUR 100 per minuut. Deze actie wordt gelogd."
           confirmLabel="Reset alles"
           busy={busy}
           onCancel={() => setConfirmResetAll(false)}
