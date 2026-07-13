@@ -1,11 +1,51 @@
 import { BoltIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import type { Team } from "../types/game";
+import type { GameUpgrade, Team } from "../types/game";
+import { applyFilledUpgrade } from "../services/teamService";
 import { gameUpgrades } from "../utils/gameData";
 import { formatMoney } from "../utils/format";
 import { playKaching } from "../utils/sound";
-import { purchaseGameUpgrade } from "../services/teamService";
 import { Button } from "./ui/Button";
+import { TextInput } from "./ui/TextInput";
+
+const storageKey = "supermarket-tycoon-upgrade-presets";
+
+function numericInput(value: string): number {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+}
+
+function normalizeUpgrade(value: Partial<GameUpgrade>, fallback: GameUpgrade) {
+  return {
+    key: fallback.key,
+    name: String(value.name ?? fallback.name).slice(0, 48),
+    cost: numericInput(String(value.cost ?? fallback.cost)),
+    incomeBoost: numericInput(String(value.incomeBoost ?? fallback.incomeBoost)),
+    description: String(value.description ?? fallback.description).slice(0, 90),
+  };
+}
+
+function loadPresetUpgrades() {
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) return gameUpgrades;
+
+    const parsed = JSON.parse(stored) as Array<Partial<GameUpgrade>>;
+    if (!Array.isArray(parsed)) return gameUpgrades;
+
+    return gameUpgrades.map((fallback) => {
+      const saved = parsed.find((upgrade) => upgrade.key === fallback.key);
+      return normalizeUpgrade(saved ?? {}, fallback);
+    });
+  } catch {
+    return gameUpgrades;
+  }
+}
+
+type EditableUpgradeField = keyof Pick<
+  GameUpgrade,
+  "name" | "cost" | "incomeBoost" | "description"
+>;
 
 export function GameMasterPanel({
   teams,
@@ -15,6 +55,9 @@ export function GameMasterPanel({
   onChanged: () => void | Promise<void>;
 }) {
   const [selectedTeamId, setSelectedTeamId] = useState(teams[0]?.id ?? 1);
+  const [presetUpgrades, setPresetUpgrades] = useState<GameUpgrade[]>(
+    loadPresetUpgrades,
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -27,13 +70,38 @@ export function GameMasterPanel({
     }
   }, [selectedTeamId, teams]);
 
-  async function buy(upgradeKey: string) {
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(presetUpgrades));
+  }, [presetUpgrades]);
+
+  function updatePreset(key: string, field: EditableUpgradeField, value: string) {
+    setPresetUpgrades((current) =>
+      current.map((upgrade) =>
+        upgrade.key === key
+          ? {
+              ...upgrade,
+              [field]:
+                field === "cost" || field === "incomeBoost"
+                  ? numericInput(value)
+                  : value,
+            }
+          : upgrade,
+      ),
+    );
+  }
+
+  async function buy(upgrade: GameUpgrade) {
     if (!selectedTeam) return;
-    setBusy(upgradeKey);
+    setBusy(upgrade.key);
     setMessage(null);
 
     try {
-      await purchaseGameUpgrade(selectedTeam.id, upgradeKey);
+      await applyFilledUpgrade(
+        selectedTeam.id,
+        upgrade.name,
+        upgrade.cost,
+        upgrade.incomeBoost,
+      );
       playKaching();
       await onChanged();
       setMessage("Upgrade gekocht en realtime verwerkt.");
@@ -51,19 +119,31 @@ export function GameMasterPanel({
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-200">
             Game Master
           </p>
-          <h2 className="text-2xl font-black text-white">Vooraf ingestelde upgrades</h2>
+          <h2 className="text-2xl font-black text-white">
+            Vooraf ingevulde upgrades
+          </h2>
         </div>
-        <select
-          value={selectedTeamId}
-          onChange={(event) => setSelectedTeamId(Number(event.target.value))}
-          className="min-h-11 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-white"
-        >
-          {teams.map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.name} · {formatMoney(team.total_money)}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={selectedTeamId}
+            onChange={(event) => setSelectedTeamId(Number(event.target.value))}
+            className="min-h-11 rounded-lg border border-white/10 bg-slate-950/70 px-3 text-white"
+          >
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name} - {formatMoney(team.total_money)}
+              </option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setPresetUpgrades(gameUpgrades)}
+            disabled={Boolean(busy)}
+          >
+            Herstel presets
+          </Button>
+        </div>
       </div>
 
       {message ? (
@@ -72,11 +152,14 @@ export function GameMasterPanel({
         </p>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {gameUpgrades.map((upgrade) => {
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {presetUpgrades.map((upgrade) => {
+          const hasName = upgrade.name.trim().length > 0;
+          const hasBoost = upgrade.incomeBoost > 0;
           const canAfford = selectedTeam
             ? selectedTeam.total_money >= upgrade.cost
             : false;
+          const canBuy = hasName && hasBoost && canAfford;
 
           return (
             <article
@@ -89,21 +172,61 @@ export function GameMasterPanel({
                   +{formatMoney(upgrade.incomeBoost)}/min
                 </span>
               </div>
-              <h3 className="text-lg font-black text-white">{upgrade.name}</h3>
-              <p className="mt-2 min-h-12 text-sm leading-6 text-slate-400">
-                {upgrade.description}
-              </p>
+              <div className="grid gap-3">
+                <TextInput
+                  label="Naam"
+                  value={upgrade.name}
+                  onChange={(event) =>
+                    updatePreset(upgrade.key, "name", event.target.value)
+                  }
+                  maxLength={48}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextInput
+                    label="Kost"
+                    value={String(upgrade.cost)}
+                    onChange={(event) =>
+                      updatePreset(upgrade.key, "cost", event.target.value)
+                    }
+                    inputMode="numeric"
+                  />
+                  <TextInput
+                    label="Extra per minuut"
+                    value={String(upgrade.incomeBoost)}
+                    onChange={(event) =>
+                      updatePreset(
+                        upgrade.key,
+                        "incomeBoost",
+                        event.target.value,
+                      )
+                    }
+                    inputMode="numeric"
+                  />
+                </div>
+                <TextInput
+                  label="Omschrijving"
+                  value={upgrade.description}
+                  onChange={(event) =>
+                    updatePreset(upgrade.key, "description", event.target.value)
+                  }
+                  maxLength={90}
+                />
+              </div>
               <p className="mt-3 text-sm font-semibold text-slate-300">
                 Kost {formatMoney(upgrade.cost)}
               </p>
               <Button
                 type="button"
                 className="mt-4 w-full"
-                variant={canAfford ? "primary" : "secondary"}
-                disabled={!canAfford || Boolean(busy)}
-                onClick={() => buy(upgrade.key)}
+                variant={canBuy ? "primary" : "secondary"}
+                disabled={!canBuy || Boolean(busy)}
+                onClick={() => buy(upgrade)}
               >
-                {busy === upgrade.key ? "Kopen..." : "Koop"}
+                {busy === upgrade.key
+                  ? "Kopen..."
+                  : canAfford
+                    ? "Koop upgrade"
+                    : "Te duur"}
               </Button>
             </article>
           );

@@ -187,3 +187,44 @@ export async function purchaseGameUpgrade(
 
   return normalizeTeam(data);
 }
+
+export async function applyFilledUpgrade(
+  teamId: number,
+  name: string,
+  cost: number,
+  incomeBoost: number,
+): Promise<Team> {
+  const cleanName = name.trim();
+
+  if (!cleanName) {
+    throw new Error("Upgrade heeft een naam nodig.");
+  }
+
+  if (cost < 0) {
+    throw new Error("Kostprijs mag niet negatief zijn.");
+  }
+
+  if (incomeBoost <= 0) {
+    throw new Error("Inkomensboost moet groter zijn dan 0.");
+  }
+
+  const latestTeam = (await fetchTeams({ applyIncome: true })).find(
+    (team) => team.id === teamId,
+  );
+
+  if (!latestTeam) {
+    throw new Error("Team bestaat niet.");
+  }
+
+  if (latestTeam.total_money < cost) {
+    throw new Error(
+      `${latestTeam.name} heeft niet genoeg geld voor ${cleanName}.`,
+    );
+  }
+
+  if (cost > 0) {
+    await subtractMoney(teamId, cost, `Upgrade gekocht: ${cleanName}`);
+  }
+
+  return increaseIncome(teamId, incomeBoost, `Upgrade gekocht: ${cleanName}`);
+}

@@ -1,4 +1,4 @@
-import { LockClosedIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { FormEvent, useState } from "react";
 import { Button } from "./ui/Button";
 import { TextInput } from "./ui/TextInput";
@@ -35,56 +35,65 @@ export function LoginPanel({
 
   return (
     <main className="grid min-h-screen place-items-center px-4 py-8">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-lg border border-white/10 bg-white/[0.07] p-6 shadow-2xl"
-      >
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-lg bg-teal-300 text-slate-950 shadow-glow">
-            <LockClosedIcon className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-200">
-              Admin
-            </p>
-            <h1 className="text-2xl font-black text-white">Aanmelden</h1>
-          </div>
-        </div>
-
-        <div className="grid gap-4">
-          <TextInput
-            label="E-mail"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            autoComplete="username"
-            required
-          />
-          <TextInput
-            label="Wachtwoord"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </div>
-
-        {error ? (
-          <p className="mt-4 rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">
-            {error}
-          </p>
-        ) : null}
-
-        <Button
-          type="submit"
-          variant="primary"
-          className="mt-5 w-full"
-          disabled={busy}
+      <div className="w-full max-w-md">
+        <a
+          href="/"
+          className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-white/10 px-3 text-sm font-semibold text-slate-200 transition hover:bg-white/15"
         >
-          {busy ? "Aanmelden..." : "Aanmelden"}
-        </Button>
-      </form>
+          <ArrowLeftIcon className="h-5 w-5" />
+          Dashboard
+        </a>
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-lg border border-white/10 bg-white/[0.07] p-6 shadow-2xl"
+        >
+          <div className="mb-6 flex items-center gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-lg bg-teal-300 text-slate-950 shadow-glow">
+              <LockClosedIcon className="h-7 w-7" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-200">
+                Admin
+              </p>
+              <h1 className="text-2xl font-black text-white">Aanmelden</h1>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <TextInput
+              label="E-mail"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+              required
+            />
+            <TextInput
+              label="Wachtwoord"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
+          {error ? (
+            <p className="mt-4 rounded-lg border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">
+              {error}
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            variant="primary"
+            className="mt-5 w-full"
+            disabled={busy}
+          >
+            {busy ? "Aanmelden..." : "Aanmelden"}
+          </Button>
+        </form>
+      </div>
     </main>
   );
 }
