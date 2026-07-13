@@ -1,4 +1,4 @@
-# Supermarket Tycoon Dashboard
+# Idle Tycoon Game
 
 Een productieklare React + Vite applicatie voor een live Chiro-activiteit met vier teams. Het publieke scherm is een groot realtime scoreboard; het adminscherm laat organisatoren geld, inkomen, teamgegevens, resets en Game Master-upgrades beheren.
 
